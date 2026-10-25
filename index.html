@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>What The Hack</title>
+<style>
+  :root {
+    --green: #2ecc71;
+    --blue: #3498db;
+    --red: #e74c3c;
+    --idle: #ffffff;
+    --bg: #0b0f14;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: radial-gradient(circle at 50% 20%, #1b2735, var(--bg) 70%);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    padding: 12px;
+  }
+  .phone {
+    position: relative;
+    width: min(380px, 100%);
+    height: min(780px, calc(100vh - 24px));
+    background: #000;
+    border-radius: 44px;
+    border: 10px solid #1c1c22;
+    box-shadow: 0 0 0 2px #444, 0 30px 80px rgba(0,0,0,.7);
+    overflow: hidden;
+  }
+  .notch {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    width: 14px; height: 14px; border-radius: 50%; background: #000;
+    box-shadow: 0 0 0 2px #15151a; z-index: 20;
+  }
+  .statusbar {
+    position: absolute; top: 0; left: 0; right: 0; height: 34px; z-index: 15;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 24px 0; font-size: 12px; font-weight: 600;
+  }
+  .screen {
+    position: absolute; inset: 0;
+    display: none; flex-direction: column; align-items: center;
+    padding: 44px 18px 18px;
+    background: linear-gradient(160deg, #141e30 0%, #243b55 50%, #3a1c71 100%);
+  }
+  .screen.active { display: flex; }
+
+  /* ---------- menu ---------- */
+  h1 { margin: 6px 0 2px; font-size: 28px; letter-spacing: 1px; }
+  h1 span { color: var(--green); }
+  .sub { opacity: .7; font-size: 13px; margin-bottom: 14px; text-align: center; }
+  .group { width: 100%; margin-bottom: 12px; }
+  .group h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; opacity: .65; }
+  .opts { display: grid; gap: 8px; }
+  .opts.c3 { grid-template-columns: repeat(3, 1fr); }
+  .opts.c2 { grid-template-columns: repeat(2, 1fr); }
+  .opt {
+    background: rgba(255,255,255,.08); border: 2px solid transparent; color: #fff;
+    border-radius: 14px; padding: 10px 6px; font: inherit; font-size: 14px; cursor: pointer;
+    transition: .15s;
+  }
+  .opt small { display: block; opacity: .6; font-size: 11px; margin-top: 2px; }
+  .opt.sel { border-color: var(--green); background: rgba(46,204,113,.18); }
+  .btn {
+    border: 0; border-radius: 999px; padding: 13px 26px; font: inherit; font-weight: 700;
+    font-size: 16px; color: #062; background: var(--green); cursor: pointer; width: 100%;
+  }
+  .btn.ghost { background: rgba(255,255,255,.12); color: #fff; font-size: 13px; padding: 8px 14px; width: auto; font-weight: 500; }
+  .legend { display: flex; gap: 10px; font-size: 11px; justify-content: center; margin: 4px 0 12px; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+  .spacer { flex: 1; }
+
+  /* ---------- game ---------- */
+  .clock { font-size: 54px; font-weight: 200; line-height: 1; margin-top: 4px; }
+  .date { font-size: 13px; opacity: .8; margin-bottom: 6px; }
+  .info { display: flex; gap: 8px; align-items: center; justify-content: space-between; width: 100%; font-size: 13px; margin: 4px 0; }
+  .chances { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; max-width: 220px; }
+  .chances b { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.9); }
+  .chances b.used { background: rgba(255,255,255,.2); }
+  .msg { min-height: 20px; font-size: 13px; text-align: center; opacity: .9; margin: 2px 0; }
+  .history {
+    width: 100%; flex: 1; min-height: 40px; overflow-y: auto; margin: 4px 0;
+    display: flex; flex-direction: column; gap: 5px; padding: 2px;
+    scrollbar-width: thin;
+  }
+  .history.thumbs { flex-direction: row; flex-wrap: wrap; align-content: flex-start; justify-content: center; gap: 6px; }
+  .hrow { display: flex; gap: 6px; justify-content: center; align-items: center; }
+  .hrow .n { font-size: 11px; opacity: .5; width: 18px; text-align: right; }
+  .cell {
+    width: 34px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 700; background: rgba(255,255,255,.12);
+  }
+  .cell.g, .dot-g { background: var(--green); }
+  .cell.b { background: var(--blue); }
+  .cell.r { background: var(--red); }
+  .thumb { width: 54px; height: 54px; background: rgba(0,0,0,.25); border-radius: 10px; }
+  .pinbox { display: flex; gap: 8px; margin: 6px 0 10px; }
+  .pinbox .cell { width: 42px; height: 48px; font-size: 24px; background: rgba(255,255,255,.15); border-bottom: 3px solid rgba(255,255,255,.4); }
+  .pinbox .cell.cur { border-bottom-color: #fff; }
+  .pinbox.fb .cell.g { background: var(--green); } .pinbox.fb .cell.b { background: var(--blue); } .pinbox.fb .cell.r { background: var(--red); }
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 18px; width: 100%; max-width: 270px; }
+  .key {
+    height: 56px; border-radius: 50%; border: 0; background: rgba(255,255,255,.12); color: #fff;
+    font: inherit; font-size: 24px; cursor: pointer; transition: background .1s;
+  }
+  .key:active { background: rgba(255,255,255,.35); }
+  .key.fn { background: transparent; font-size: 18px; }
+  .padwrap { position: relative; width: 270px; max-width: 100%; aspect-ratio: 1; touch-action: none; user-select: none; }
+  .padwrap svg { width: 100%; height: 100%; touch-action: none; display: block; }
+  .shake { animation: shake .35s; }
+  @keyframes shake { 20%{transform:translateX(-9px)} 40%{transform:translateX(9px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
+  .gamebar { display: flex; justify-content: space-between; width: 100%; margin-top: 8px; }
+
+  /* ---------- end screens ---------- */
+  .center { justify-content: center; text-align: center; gap: 10px; }
+  .screen.win { background: linear-gradient(160deg, #0f2027, #203a43, #2c5364); }
+  .home { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; width: 100%; margin: 14px 0; }
+  .home div { font-size: 34px; background: rgba(255,255,255,.1); border-radius: 16px; padding: 8px 0; }
+  .home div small { display: block; font-size: 10px; opacity: .7; }
+  .screen.format { background: #000; font-family: ui-monospace, Menlo, Consolas, monospace; align-items: stretch; justify-content: center; }
+  .screen.format .warn { color: #ff5a4d; font-weight: 700; font-size: 18px; text-align: center; margin-bottom: 14px; }
+  .bar { height: 12px; background: #222; border-radius: 6px; overflow: hidden; margin: 10px 0; }
+  .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff5a4d, #ffb347); }
+  .log { font-size: 12px; color: #9fe8a8; height: 150px; overflow: hidden; white-space: pre-wrap; }
+  .secret { display: flex; gap: 6px; justify-content: center; margin: 8px 0; }
+  .big { font-size: 56px; }
+  .hidden { display: none !important; }
+
+  /* ---------- menu moderno ---------- */
+  #menu {
+    background: #05070d; overflow: hidden; padding-top: 46px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  #menu > *:not(.orb):not(.grid-bg) { position: relative; z-index: 2; }
+  .orb { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; z-index: 0; animation: float 9s ease-in-out infinite; }
+  .o1 { width: 220px; height: 220px; background: #00ff9d; top: -70px; left: -80px; }
+  .o2 { width: 260px; height: 260px; background: #7a2cff; bottom: -90px; right: -90px; animation-delay: -4s; }
+  @keyframes float { 50% { transform: translate(30px, 24px) scale(1.15); } }
+  .grid-bg {
+    position: absolute; inset: 0; z-index: 1; opacity: .5;
+    background-image: linear-gradient(rgba(0,255,157,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,157,.07) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(circle at 50% 30%, #000, transparent 75%);
+    -webkit-mask-image: radial-gradient(circle at 50% 30%, #000, transparent 75%);
+  }
+  .logo span {
+    display: inline-flex; width: 58px; height: 58px; align-items: center; justify-content: center; font-size: 28px;
+    border-radius: 18px; background: rgba(0,255,157,.1); border: 1px solid rgba(0,255,157,.5);
+    box-shadow: 0 0 24px rgba(0,255,157,.45), inset 0 0 14px rgba(0,255,157,.2);
+  }
+  #menu h1 {
+    font-size: 36px; line-height: .98; text-align: center; margin: 12px 0 8px; letter-spacing: 3px; font-weight: 800;
+    text-shadow: 0 0 18px rgba(255,255,255,.25);
+  }
+  #menu h1 span {
+    background: linear-gradient(90deg, #00ff9d, #00c8ff, #b266ff); -webkit-background-clip: text; background-clip: text;
+    color: transparent; text-shadow: none; filter: drop-shadow(0 0 12px rgba(0,255,157,.55));
+    font-size: 52px; letter-spacing: 6px;
+  }
+  .tag { font-size: 12px; color: #00ff9d; opacity: .85; margin-bottom: 16px; }
+  .caret { display: inline-block; width: 7px; height: 13px; background: #00ff9d; margin-left: 2px; vertical-align: -2px; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  #menu .group h3 { color: #8b95a8; font-weight: 500; opacity: 1; letter-spacing: 1.5px; }
+  #menu .group h3 em { font-style: normal; color: #00ff9d; margin-right: 6px; }
+  #menu .opt {
+    font-family: inherit; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.12);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-radius: 12px; padding: 11px 6px;
+  }
+  #menu .opt:hover { border-color: rgba(0,255,157,.5); transform: translateY(-1px); }
+  #menu .opt.sel {
+    border-color: #00ff9d; background: rgba(0,255,157,.1); color: #00ff9d;
+    box-shadow: 0 0 16px rgba(0,255,157,.35), inset 0 0 12px rgba(0,255,157,.12);
+  }
+  #menu .opt.sel small { opacity: .85; }
+  #menu .legend span { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); border-radius: 999px; padding: 3px 8px; color: #aab3c5; }
+  #menu .btn {
+    font-family: inherit; letter-spacing: 2px; color: #02150d; border-radius: 14px; padding: 15px;
+    background: linear-gradient(90deg, #00ff9d, #00c8ff); box-shadow: 0 0 26px rgba(0,255,157,.5);
+    animation: pulse 2.2s ease-in-out infinite; transition: transform .1s;
+  }
+  #menu .btn:active { transform: scale(.97); }
+  @keyframes pulse { 50% { box-shadow: 0 0 40px rgba(0,200,255,.75); } }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="statusbar"><span id="sbTime">12:00</span><span>📶 🔋 87%</span></div>
+
+  <!-- MENU -->
+  <section class="screen active" id="menu">
+    <div class="orb o1"></div><div class="orb o2"></div><div class="grid-bg"></div>
+    <div class="logo"><span>🔐</span></div>
+    <h1>WHAT THE<br><span>HACK</span></h1>
+    <div class="tag">&gt; quebre a senha_<i class="caret"></i></div>
+
+    <div class="group">
+      <h3><em>01</em> Tipo de bloqueio</h3>
+      <div class="opts c3" id="optMode">
+        <button class="opt sel" data-v="pin4">🔢 PIN<small>4 dígitos</small></button>
+        <button class="opt" data-v="pin6">🔢 PIN<small>6 dígitos</small></button>
+        <button class="opt" data-v="pattern">✏️ Padrão<small>3×3</small></button>
+      </div>
+    </div>
+
+    <div class="group">
+      <h3><em>02</em> Dificuldade</h3>
+      <div class="opts c2" id="optDiff">
+        <button class="opt" data-v="3">😈 Difícil<small>3 chances</small></button>
+        <button class="opt sel" data-v="6">😐 Médio<small>6 chances</small></button>
+        <button class="opt" data-v="9">🙂 Fácil<small>9 chances</small></button>
+        <button class="opt" data-v="0">♾️ Livre<small>sem limite</small></button>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><i style="background:var(--green)"></i>certo no lugar certo</span>
+      <span><i style="background:var(--blue)"></i>certo no lugar errado</span>
+      <span><i style="background:var(--red)"></i>não existe</span>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="btnStart">INICIAR HACK ▸</button>
+  </section>
+
+  <!-- GAME -->
+  <section class="screen" id="game">
+    <div class="clock" id="clock">12:00</div>
+    <div class="date" id="date"></div>
+    <div class="info">
+      <span id="modeLabel"></span>
+      <span class="chances" id="chances"></span>
+    </div>
+    <div class="msg" id="msg"></div>
+    <div class="history" id="history"></div>
+    <div id="pinUI">
+      <div class="pinbox" id="pinbox"></div>
+      <div class="keypad" id="keypad"></div>
+    </div>
+    <div id="patUI" class="hidden">
+      <div class="padwrap" id="padwrap">
+        <svg viewBox="0 0 300 300" id="padsvg"></svg>
+      </div>
+    </div>
+    <div class="gamebar">
+      <button class="btn ghost" id="btnMenu">← Menu</button>
+      <button class="btn ghost hidden" id="btnGiveUp">Desistir</button>
+    </div>
+  </section>
+
+  <!-- WIN -->
+  <section class="screen win center" id="win">
+    <div class="big">🔓</div>
+    <h1>Desbloqueado!</h1>
+    <div class="sub" id="winSub"></div>
+    <div class="home">
+      <div>📷<small>Fotos</small></div><div>💬<small>Chat</small></div>
+      <div>🎵<small>Música</small></div><div>🏦<small>Banco</small></div>
+    </div>
+    <div class="sub">Você hackeou o celular. 😎</div>
+    <button class="btn" id="btnAgain1">Jogar de novo</button>
+  </section>
+
+  <!-- FORMAT -->
+  <section class="screen format" id="format">
+    <div id="fmtRun">
+      <div class="warn">⚠ TENTATIVAS EXCEDIDAS ⚠<br>Por segurança, o dispositivo será formatado.</div>
+      <div class="bar"><i id="fmtBar"></i></div>
+      <div id="fmtPct" style="text-align:center;color:#ffb347">0%</div>
+      <div class="log" id="fmtLog"></div>
+    </div>
+    <div id="fmtDone" class="center" style="display:none;flex-direction:column;align-items:center;gap:10px;text-align:center;font-family:system-ui,sans-serif">
+      <div class="big">😂</div>
+      <h1 style="font-size:24px">Brincadeira!</h1>
+      <div class="sub">Seu celular está são e salvo. Era só um jogo.<br>A senha era:</div>
+      <div id="secretShow"></div>
+      <button class="btn" id="btnAgain2" style="margin-top:14px">Tentar de novo</button>
+      <button class="btn ghost" id="btnHome2">🏠 Voltar ao início</button>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const screens = ['menu', 'game', 'win', 'format'];
+  const show = name => screens.forEach(s => $(s).classList.toggle('active', s === name));
+  const COLOR = { g: 'var(--green)', b: 'var(--blue)', r: 'var(--red)' };
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+
+  const cfg = { mode: 'pin4', diff: 6 };
+  let S = null; // estado da partida
+
+  /* ---------- relógio ---------- */
+  function tick() {
+    const d = new Date();
+    const t = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    $('sbTime').textContent = t; $('clock').textContent = t;
+    $('date').textContent = d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  }
+  tick(); setInterval(tick, 15000);
+
+  /* ---------- menu ---------- */
+  function bindOpts(id, key, parse) {
+    $(id).addEventListener('click', e => {
+      const b = e.target.closest('.opt'); if (!b) return;
+      [...$(id).children].forEach(c => c.classList.toggle('sel', c === b));
+      cfg[key] = parse(b.dataset.v);
+    });
+  }
+  bindOpts('optMode', 'mode', v => v);
+  bindOpts('optDiff', 'diff', v => +v);
+  $('btnStart').onclick = startGame;
+  $('btnMenu').onclick = () => show('menu');
+  $('btnAgain1').onclick = $('btnHome2').onclick = () => show('menu');
+  $('btnAgain2').onclick = startGame;
+  $('btnGiveUp').onclick = () => finish(false);
+
+  /* ---------- lógica de feedback (estilo Wordle, trata repetidos) ---------- */
+  function evaluate(secret, guess) {
+    const res = guess.map(() => 'r');
+    const left = {};
+    secret.forEach((s, i) => { if (guess[i] === s) res[i] = 'g'; else left[s] = (left[s] || 0) + 1; });
+    guess.forEach((x, i) => { if (res[i] !== 'g' && left[x] > 0) { res[i] = 'b'; left[x]--; } });
+    return res;
+  }
+
+  /* ---------- padrão: geometria ---------- */
+  const XY = i => [50 + (i % 3) * 100, 50 + Math.floor(i / 3) * 100];
+  // ponto do meio de uma reta entre a e b, se existir (o Samsung o inclui automaticamente)
+  function between(a, b) {
+    const [ar, ac, br, bc] = [Math.floor(a / 3), a % 3, Math.floor(b / 3), b % 3];
+    const dr = br - ar, dc = bc - ac;
+    if (Math.abs(dr) % 2 || Math.abs(dc) % 2) return null;
+    if (Math.abs(dr) < 2 && Math.abs(dc) < 2) return null;
+    return ((ar + br) / 2) * 3 + (ac + bc) / 2;
+  }
+  function randomPattern() {
+    const len = 4 + Math.floor(Math.random() * 3); // 4 a 6 pontos
+    for (;;) {
+      const p = [Math.floor(Math.random() * 9)];
+      while (p.length < len) {
+        const opts = [...Array(9).keys()].filter(n => {
+          if (p.includes(n)) return false;
+          const m = between(p[p.length - 1], n);
+          return m === null || p.includes(m);
+        });
+        if (!opts.length) break;
+        p.push(opts[Math.floor(Math.random() * opts.length)]);
+      }
+      if (p.length === len) return p;
+    }
+  }
+  function patternSVG(path, colors, size) {
+    const k = 100 / 300;
+    const P = i => XY(i).map(v => v * k);
+    let s = `<svg class="thumb" viewBox="0 0 100 100" ${size ? `width="${size}" height="${size}"` : ''}>`;
+    for (let i = 1; i < path.length; i++) {
+      const [x1, y1] = P(path[i - 1]), [x2, y2] = P(path[i]);
+      s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${COLOR[colors[i]]}" stroke-width="3" stroke-linecap="round" opacity=".8"/>`;
+    }
+    for (let i = 0; i < 9; i++) {
+      const [x, y] = P(i), idx = path.indexOf(i);
+      s += `<circle cx="${x}" cy="${y}" r="${idx < 0 ? 3 : 5}" fill="${idx < 0 ? 'rgba(255,255,255,.4)' : COLOR[colors[idx]]}"/>`;
+    }
+    return s + '</svg>';
+  }
+
+  /* ---------- início ---------- */
+  function startGame() {
+    const isPat = cfg.mode === 'pattern';
+    const len = cfg.mode === 'pin6' ? 6 : 4;
+    S = {
+      isPat, len,
+      max: cfg.diff,            // 0 = livre
+      secret: isPat ? randomPattern()
+                    : Array.from({ length: len }, () => Math.floor(Math.random() * 10)),
+      tries: 0, input: [], locked: false, over: false,
+    };
+    $('modeLabel').textContent = isPat ? `Padrão (${S.secret.length} pontos)` : `PIN de ${len} dígitos`;
+    $('pinUI').classList.toggle('hidden', isPat);
+    $('patUI').classList.toggle('hidden', !isPat);
+    $('history').classList.toggle('thumbs', isPat);
+    $('history').innerHTML = '';
+    $('btnGiveUp').classList.toggle('hidden', S.max !== 0);
+    setMsg(isPat ? 'Desenhe o padrão' : 'Digite o PIN');
+    renderChances();
+    if (isPat) resetPad(); else { buildKeypad(); renderPin(); }
+    show('game');
+  }
+  function setMsg(t) { $('msg').textContent = t; }
+  function renderChances() {
+    const el = $('chances');
+    if (!S.max) { el.textContent = `Tentativas: ${S.tries} · ♾️`; return; }
+    el.innerHTML = Array.from({ length: S.max }, (_, i) => `<b class="${i < S.tries ? 'used' : ''}"></b>`).join('');
+  }
+
+  /* ---------- PIN ---------- */
+  function buildKeypad() {
+    const k = $('keypad'); k.innerHTML = '';
+    const add = (label, fn, cls = '') => {
+      const b = document.createElement('button');
+      b.className = 'key ' + cls; b.textContent = label; b.onclick = fn; k.appendChild(b);
+    };
+    for (let n = 1; n <= 9; n++) add(n, () => pinKey(n));
+    add('⌫', pinBack, 'fn'); add(0, () => pinKey(0)); add('', () => {}, 'fn');
+  }
+  function renderPin(colors) {
+    const box = $('pinbox');
+    box.classList.toggle('fb', !!colors);
+    box.innerHTML = Array.from({ length: S.len }, (_, i) => {
+      const v = S.input[i];
+      return `<div class="cell ${colors ? colors[i] : ''} ${!colors && i === S.input.length ? 'cur' : ''}">${v ?? ''}</div>`;
+    }).join('');
+  }
+  function pinKey(n) {
+    if (!S || S.isPat || S.locked || S.over || S.input.length >= S.len) return;
+    S.input.push(n); renderPin();
+    if (S.input.length === S.len) submitPin();
+  }
+  function pinBack() {
+    if (!S || S.locked || S.over) return;
+    S.input.pop(); renderPin();
+  }
+  async function submitPin() {
+    S.locked = true;
+    const guess = [...S.input];
+    const res = evaluate(S.secret, guess);
+    renderPin(res);
+    $('history').insertAdjacentHTML('beforeend',
+      `<div class="hrow"><span class="n">${S.tries + 1}</span>${guess.map((d, i) => `<div class="cell ${res[i]}">${d}</div>`).join('')}</div>`);
+    afterAttempt(res.every(c => c === 'g'));
+    $('history').scrollTop = 1e9;
+    await wait(900);
+    if (S.over) return;
+    S.input = []; renderPin(); S.locked = false;
+  }
+
+  /* ---------- Padrão ---------- */
+  const svg = $('padsvg');
+  let path = [], drawing = false, cursor = null;
+  function resetPad(colors) {
+    const dots = [...Array(9).keys()].map(i => {
+      const [x, y] = XY(i), idx = path.indexOf(i);
+      const fill = idx < 0 ? 'rgba(255,255,255,.9)' : (colors ? COLOR[colors[idx]] : '#fff');
+      return `<circle cx="${x}" cy="${y}" r="${idx < 0 ? 10 : 15}" fill="${fill}"/>` +
+             (idx >= 0 ? `<circle cx="${x}" cy="${y}" r="30" fill="${colors ? COLOR[colors[idx]] : '#fff'}" opacity=".18"/>` : '');
+    }).join('');
+    let lines = '';
+    for (let i = 1; i < path.length; i++) {
+      const [x1, y1] = XY(path[i - 1]), [x2, y2] = XY(path[i]);
+      lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${colors ? COLOR[colors[i]] : '#fff'}" stroke-width="7" stroke-linecap="round" opacity=".85"/>`;
+    }
+    if (drawing && cursor && path.length) {
+      const [x1, y1] = XY(path[path.length - 1]);
+      lines += `<line x1="${x1}" y1="${y1}" x2="${cursor[0]}" y2="${cursor[1]}" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".5"/>`;
+    }
+    svg.innerHTML = lines + dots;
+  }
+  function pointerPos(e) {
+    const r = svg.getBoundingClientRect();
+    return [(e.clientX - r.left) * 300 / r.width, (e.clientY - r.top) * 300 / r.height];
+  }
+  function hit([x, y]) {
+    for (let i = 0; i < 9; i++) {
+      const [px, py] = XY(i);
+      if (Math.hypot(x - px, y - py) < 36) return i;
+    }
+    return -1;
+  }
+  svg.addEventListener('pointerdown', e => {
+    if (!S || !S.isPat || S.locked || S.over) return;
+    svg.setPointerCapture(e.pointerId);
+    drawing = true; path = []; cursor = pointerPos(e);
+    extend(hit(cursor)); resetPad();
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!drawing) return;
+    cursor = pointerPos(e); extend(hit(cursor)); resetPad();
+  });
+  const end = () => { if (drawing) { drawing = false; cursor = null; submitPattern(); } };
+  svg.addEventListener('pointerup', end);
+  svg.addEventListener('pointercancel', end);
+  function extend(i) {
+    if (i < 0 || path.includes(i)) return;
+    if (path.length) {
+      const m = between(path[path.length - 1], i);
+      if (m !== null && !path.includes(m)) path.push(m);
+    }
+    path.push(i);
+  }
+  async function submitPattern() {
+    if (path.length < 4) {
+      if (path.length) { setMsg('Conecte pelo menos 4 pontos'); $('padwrap').classList.add('shake'); }
+      await wait(350); $('padwrap').classList.remove('shake');
+      path = []; resetPad(); return;
+    }
+    S.locked = true;
+    const guess = [...path];
+    const res = evaluate(S.secret, guess);
+    resetPad(res);
+    $('history').insertAdjacentHTML('beforeend', patternSVG(guess, res));
+    afterAttempt(guess.length === S.secret.length && res.every(c => c === 'g'));
+    await wait(1100);
+    path = []; resetPad();
+    if (!S.over) S.locked = false;
+  }
+
+  /* ---------- resultado da tentativa ---------- */
+  function afterAttempt(correct) {
+    S.tries++; renderChances();
+    if (correct) return finish(true);
+    if (S.max && S.tries >= S.max) return finish(false);
+    const left = S.max ? ` · ${S.max - S.tries} restante${S.max - S.tries > 1 ? 's' : ''}` : '';
+    setMsg('Senha incorreta' + left);
+    if (navigator.vibrate) navigator.vibrate(120);
+  }
+  async function finish(won) {
+    S.over = true; S.locked = true;
+    await wait(1300);
+    if (won) {
+      $('winSub').textContent = `${S.tries} tentativa${S.tries > 1 ? 's' : ''} — ${S.isPat ? 'padrão' : 'PIN'} quebrado.`;
+      show('win');
+    } else {
+      formatPhone();
+    }
+  }
+
+  /* ---------- formatação (de brincadeira) ---------- */
+  async function formatPhone() {
+    $('fmtRun').style.display = ''; $('fmtDone').style.display = 'none';
+    $('fmtBar').style.width = '0'; $('fmtPct').textContent = '0%'; $('fmtLog').textContent = '';
+    show('format');
+    const lines = [
+      'Bloqueando dispositivo...', 'Apagando fotos de gatinhos...', 'Apagando 4.382 prints de conversa...',
+      'Removendo contatos do(a) ex...', 'Deletando playlist "Sofrência 2019"...', 'Limpando cache do navegador...',
+      'Formatando partição /data...', 'Esquecendo a senha do Wi-Fi...', 'Restaurando padrões de fábrica...',
+      'Enviando meme de despedida...',
+    ];
+    const log = $('fmtLog');
+    for (let p = 0; p <= 100; p += 2) {
+      $('fmtBar').style.width = p + '%'; $('fmtPct').textContent = p + '%';
+      if (p % 10 === 0) { log.textContent += '> ' + lines[p / 10 % lines.length] + '\n'; log.scrollTop = 1e9; }
+      await wait(70);
+    }
+    await wait(500);
+    const sec = $('secretShow');
+    sec.innerHTML = S.isPat
+      ? patternSVG(S.secret, S.secret.map(() => 'g'), 110)
+      : `<div class="secret">${S.secret.map(d => `<div class="cell g">${d}</div>`).join('')}</div>`;
+    $('fmtRun').style.display = 'none'; $('fmtDone').style.display = 'flex';
+  }
+
+  /* ---------- teclado físico ---------- */
+  addEventListener('keydown', e => {
+    if (!$('game').classList.contains('active')) return;
+    if (/^\d$/.test(e.key)) pinKey(+e.key);
+    else if (e.key === 'Backspace') pinBack();
+  });
+})();
+</script>
+</body>
+</html>
